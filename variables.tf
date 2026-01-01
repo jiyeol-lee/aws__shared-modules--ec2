@@ -45,7 +45,7 @@ variable "iam_instance_profile" {
 }
 
 variable "enable_monitoring" {
-  description = "Enable detailed CloudWatch monitoring. Detailed monitoring costs ~$2.10/month. Set to true only if 1-minute granularity is needed."
+  description = "Enable detailed CloudWatch monitoring (1-minute granularity). Costs ~$2.10/month. Note: CPU alarms work with basic monitoring (5-min) too."
   type        = bool
   default     = false
 }
@@ -210,9 +210,9 @@ variable "metadata_hop_limit" {
 # =============================================================================
 
 variable "create_cpu_alarm" {
-  description = "Create CloudWatch alarm for high CPU usage"
+  description = "Create CloudWatch CPU utilization alarm. Works with both basic (5-min) and detailed (1-min) monitoring."
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "alarm_cpu_threshold" {

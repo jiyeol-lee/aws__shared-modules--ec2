@@ -129,8 +129,9 @@ resource "aws_instance" "main" {
 }
 
 # CloudWatch CPU Alarm (optional)
+# Note: Works with both basic (5-min) and detailed (1-min) monitoring
 resource "aws_cloudwatch_metric_alarm" "cpu" {
-  count = var.enable_monitoring && var.create_cpu_alarm ? 1 : 0
+  count = var.create_cpu_alarm ? 1 : 0
 
   alarm_name          = "${var.name}-cpu-high"
   alarm_description   = "Monitors CPU utilization for ${var.name}"
@@ -157,4 +158,11 @@ resource "aws_cloudwatch_metric_alarm" "cpu" {
       ManagedBy = "Terraform"
     }
   )
+
+  lifecycle {
+    precondition {
+      condition     = var.enable_monitoring || var.alarm_period >= 300
+      error_message = "alarm_period < 300s requires enable_monitoring = true for 1-minute metric granularity."
+    }
+  }
 }

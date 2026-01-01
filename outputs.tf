@@ -83,5 +83,5 @@ output "additional_volume_ids" {
 
 output "cpu_alarm_id" {
   description = "ID of the CPU alarm (if created)"
-  value       = var.enable_monitoring && var.create_cpu_alarm ? aws_cloudwatch_metric_alarm.cpu[0].id : null
+  value       = var.create_cpu_alarm ? aws_cloudwatch_metric_alarm.cpu[0].id : null
 }
