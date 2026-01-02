@@ -40,8 +40,7 @@ resource "aws_security_group" "main" {
   tags = merge(
     var.tags,
     {
-      Name      = "${var.name}-sg"
-      ManagedBy = "Terraform"
+      Name = "${var.name}-sg"
     }
   )
 
@@ -65,8 +64,7 @@ resource "aws_key_pair" "main" {
   }
 
   tags = merge(var.tags, {
-    Name      = "${var.name}-key"
-    ManagedBy = "Terraform"
+    Name = "${var.name}-key"
   })
 }
 
@@ -100,9 +98,9 @@ resource "aws_instance" "main" {
       volume_type           = ebs_block_device.value.volume_type
       volume_size           = ebs_block_device.value.volume_size
       encrypted             = ebs_block_device.value.encrypted
-      delete_on_termination = lookup(ebs_block_device.value, "delete_on_termination", true)
-      iops                  = lookup(ebs_block_device.value, "iops", null)
-      throughput            = lookup(ebs_block_device.value, "throughput", null)
+      delete_on_termination = ebs_block_device.value.delete_on_termination
+      iops                  = ebs_block_device.value.iops
+      throughput            = ebs_block_device.value.throughput
     }
   }
 
@@ -115,21 +113,26 @@ resource "aws_instance" "main" {
   tags = merge(
     var.tags,
     {
-      Name      = var.name
-      ManagedBy = "Terraform"
+      Name = var.name
     }
   )
 
   lifecycle {
     create_before_destroy = false
+    # IMPORTANT: user_data changes are intentionally ignored to prevent accidental
+    # instance replacement. This is a safety measure but causes configuration drift.
+    # Users must manually taint or replace the instance to apply user_data changes.
+    # Note: Terraform's ignore_changes cannot be made variable (must be static).
     ignore_changes = [
-      user_data # Don't replace instance if only user_data changes
+      user_data
     ]
   }
 }
 
 # CloudWatch CPU Alarm (optional)
-# Note: Works with both basic (5-min) and detailed (1-min) monitoring
+# Metric resolution depends on EC2 monitoring level:
+# - Basic monitoring (default, free): 5-minute resolution, alarm_period must be >= 300s
+# - Detailed monitoring ($2.10/month): 1-minute resolution, alarm_period can be 60s+
 resource "aws_cloudwatch_metric_alarm" "cpu" {
   count = var.create_cpu_alarm ? 1 : 0
 
@@ -154,15 +157,14 @@ resource "aws_cloudwatch_metric_alarm" "cpu" {
   tags = merge(
     var.tags,
     {
-      Name      = "${var.name}-cpu-alarm"
-      ManagedBy = "Terraform"
+      Name = "${var.name}-cpu-alarm"
     }
   )
 
   lifecycle {
     precondition {
       condition     = var.enable_monitoring || var.alarm_period >= 300
-      error_message = "alarm_period < 300s requires enable_monitoring = true for 1-minute metric granularity."
+      error_message = "alarm_period < 300s requires enable_monitoring = true. Basic monitoring (default) provides 5-minute metrics; detailed monitoring provides 1-minute metrics."
     }
   }
 }

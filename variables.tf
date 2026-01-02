@@ -5,6 +5,11 @@
 variable "name" {
   description = "Name of the EC2 instance and related resources"
   type        = string
+
+  validation {
+    condition     = length(var.name) >= 1 && length(var.name) <= 200
+    error_message = "name must be between 1 and 200 characters to allow for resource suffixes."
+  }
 }
 
 variable "vpc_id" {
@@ -33,9 +38,9 @@ variable "instance_type" {
 }
 
 variable "associate_public_ip_address" {
-  description = "Associate a public IP address with the instance"
+  description = "Associate a public IP address with the instance. Defaults to false for security - set to true if public access is required."
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "iam_instance_profile" {
@@ -51,7 +56,17 @@ variable "enable_monitoring" {
 }
 
 variable "user_data" {
-  description = "User data script for instance initialization"
+  description = <<-EOT
+    User data script for instance initialization.
+
+    IMPORTANT: Changes to user_data after initial instance creation will NOT trigger
+    instance replacement due to lifecycle ignore_changes. This prevents accidental
+    instance destruction but means user_data updates require manual action.
+
+    To apply user_data changes to an existing instance:
+    - Option 1: terraform taint module.<name>.aws_instance.main
+    - Option 2: Manually terminate the instance and run terraform apply
+  EOT
   type        = string
   default     = null
 }
@@ -187,6 +202,13 @@ variable "additional_volumes" {
     delete_on_termination = optional(bool, true)
   }))
   default = []
+
+  validation {
+    condition = alltrue([
+      for vol in var.additional_volumes : contains(["gp2", "gp3", "io1", "io2", "st1", "sc1", "standard"], vol.volume_type)
+    ])
+    error_message = "additional_volumes volume_type must be one of: gp2, gp3, io1, io2, st1, sc1, standard."
+  }
 }
 
 # =============================================================================
@@ -203,6 +225,11 @@ variable "metadata_hop_limit" {
   description = "Number of hops for IMDSv2"
   type        = number
   default     = 1
+
+  validation {
+    condition     = var.metadata_hop_limit >= 1 && var.metadata_hop_limit <= 64
+    error_message = "metadata_hop_limit must be between 1 and 64."
+  }
 }
 
 # =============================================================================
@@ -236,6 +263,11 @@ variable "alarm_period" {
   description = "Period in seconds for each evaluation"
   type        = number
   default     = 300
+
+  validation {
+    condition     = var.alarm_period >= 60 && var.alarm_period % 60 == 0
+    error_message = "alarm_period must be >= 60 seconds and a multiple of 60."
+  }
 }
 
 variable "alarm_actions" {

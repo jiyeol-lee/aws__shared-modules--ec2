@@ -25,6 +25,7 @@ Terraform module for creating an EC2 instance with configurable networking, stor
 
 ```hcl
 module "ec2_instance" {
+  # Replace with your module source (e.g., git URL, registry, or local path)
   source = "git@github.com:your-org/aws__shared-modules--aws-ec2.git"
 
   name      = "my-instance"
@@ -53,6 +54,7 @@ module "ec2_instance" {
 
 ```hcl
 module "ec2_instance" {
+  # Replace with your module source (e.g., git URL, registry, or local path)
   source = "git@github.com:your-org/aws__shared-modules--aws-ec2.git"
 
   name      = "my-instance"
@@ -83,12 +85,16 @@ module "ec2_instance" {
 
 ```hcl
 module "ec2_instance" {
+  # Replace with your module source (e.g., git URL, registry, or local path)
   source = "git@github.com:your-org/aws__shared-modules--aws-ec2.git"
 
   name      = "my-instance"
   vpc_id    = var.vpc_id
   subnet_id = var.subnet_id
   ami_id    = data.aws_ami.amazon_linux_2023.id
+
+  # Security: Explicitly define ingress rules (empty by default)
+  ingress_rules = []
 
   additional_volumes = [
     {
@@ -105,12 +111,24 @@ module "ec2_instance" {
 
 ```hcl
 module "ec2_instance" {
+  # Replace with your module source (e.g., git URL, registry, or local path)
   source = "git@github.com:your-org/aws__shared-modules--aws-ec2.git"
 
   name      = "my-instance"
   vpc_id    = var.vpc_id
   subnet_id = var.subnet_id
   ami_id    = data.aws_ami.amazon_linux_2023.id
+
+  # Allow SSH from specific IP (replace with your IP)
+  ingress_rules = [
+    {
+      description = "SSH access"
+      from_port   = 22
+      to_port     = 22
+      protocol    = "tcp"
+      cidr_blocks = ["YOUR_IP/32"]  # Replace with actual IP
+    }
+  ]
 
   create_key_pair = true
   ssh_public_key  = file("~/.ssh/id_rsa.pub")
@@ -121,6 +139,7 @@ module "ec2_instance" {
 
 ```hcl
 module "ec2_instance" {
+  # Replace with your module source (e.g., git URL, registry, or local path)
   source = "git@github.com:your-org/aws__shared-modules--aws-ec2.git"
 
   name      = "docker-host"
@@ -138,6 +157,9 @@ module "ec2_instance" {
     systemctl enable docker
     usermod -aG docker ec2-user
   EOF
+
+  # Security: Explicitly define ingress rules (empty by default)
+  ingress_rules = []
 }
 ```
 
@@ -150,7 +172,7 @@ module "ec2_instance" {
 | subnet_id                         | Subnet ID where the instance will be created                                                                                       | `string`       | n/a                                                                    |   yes    |
 | ami_id                            | AMI ID for the EC2 instance                                                                                                        | `string`       | n/a                                                                    |   yes    |
 | instance_type                     | EC2 instance type                                                                                                                  | `string`       | `"t4g.nano"`                                                           |    no    |
-| associate_public_ip_address       | Associate a public IP address with the instance                                                                                    | `bool`         | `true`                                                                 |    no    |
+| associate_public_ip_address       | Associate a public IP address with the instance                                                                                    | `bool`         | `false`                                                                |    no    |
 | ssh_public_key                    | SSH public key to create key pair (if create_key_pair is true)                                                                     | `string`       | `null`                                                                 |    no    |
 | create_key_pair                   | Create a new key pair using ssh_public_key                                                                                         | `bool`         | `false`                                                                |    no    |
 | key_name                          | Existing key pair name (if not creating new one)                                                                                   | `string`       | `null`                                                                 |    no    |
@@ -212,6 +234,13 @@ The default instance type `t4g.nano` uses AWS Graviton (ARM) processors. When se
 - Use ARM64/aarch64 AMIs (e.g., `al2023-ami-*-arm64`)
 - x86_64 AMIs will not work with t4g instances
 - For x86 instances, change to `t3.nano` or similar
+
+### User Data Lifecycle
+
+Changes to `user_data` after initial instance creation will **not** trigger instance replacement. This is intentional to prevent accidental instance destruction. To apply user_data changes:
+
+- Use `terraform taint module.<name>.aws_instance.main` to mark for recreation
+- Or manually terminate the instance and run `terraform apply`
 
 ### Best Practices
 
